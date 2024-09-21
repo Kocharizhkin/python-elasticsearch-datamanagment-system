@@ -1,0 +1,60 @@
+services:
+  python-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/app
+    container_name: python-app
+    env_file:
+      - .env
+    environment:
+      - ASYNC_DATABASE_URL=postgresql+asyncpg://${DB_USER}:${DB_PASSWORD}@db:${DB_PORT}/${DB_NAME}
+      - SYNC_DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:${DB_PORT}/${DB_NAME}
+      - ELASTICSEARCH_URL=http://elasticsearch:${ELASTIC_PORT}
+    ports:
+      - "8000:8000"  # Expose the Python app on port 8000
+    depends_on:
+      - db
+      - elasticsearch
+    networks:
+      - mkniga-network
+
+  db:
+    image: postgres:latest
+    container_name: db
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init:/docker-entrypoint-initdb.d
+    networks:
+      - mkniga-network
+    # No ports exposed, internal-only
+    restart: always
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.0
+    container_name: elasticsearch
+    env_file:
+      - .env
+    environment:
+      - discovery.type=single-node
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    ports:
+      - "${ELASTIC_PORT}:${ELASTIC_PORT}"  # Expose Elasticsearch for external access
+    networks:
+      - mkniga-network
+
+volumes:
+  pgdata:
+  es_data:
+
+networks:
+  mkniga-network:
+    driver: bridge

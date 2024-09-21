@@ -1,0 +1,8 @@
+mkniga
+static
+models/__pycache__
+models/db/__pycache__
+models/db/test/__pycache__
+models/db/upload
+.DS_Store
+.env
