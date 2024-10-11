@@ -6,3 +6,10 @@ models/db/test/__pycache__
 models/db/upload
 .DS_Store
 .env
+db/__pycache__
+db/test/__pycache__
+db/upload
+update_errors.txt
+update_progress.txt
+update_search_results.txt
+update_unmatched.txt

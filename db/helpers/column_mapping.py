@@ -1,7 +1,7 @@
 import json
 import pandas as pd
 import re
-from models.db.cosine_similarity import Book_similarity
+from db.helpers.cosine_similarity import Book_similarity
 
 similairity = Book_similarity()
 
@@ -9,7 +9,7 @@ class Mapping():
 
     async def extract_column_names(self, filename):
         column_names_dict = {}
-        df = pd.read_excel(f'models/db/upload/{filename}', engine='openpyxl', sheet_name=None)
+        df = pd.read_excel(f'db/upload/{filename}', engine='openpyxl', sheet_name=None)
         
         for sheet_name, sheet_df in df.items():
             column_names_dict[sheet_name] = list(sheet_df.columns)
@@ -23,7 +23,7 @@ class Mapping():
 
     def columns_mapping(self, sheet_name, columns):
         # Load the existing fields_map from the file
-        with open('models/db/fields_map.json', 'r') as f:
+        with open('db/fields_map.json', 'r') as f:
             fields_map = json.load(f)
         
         sheet_name_sanitized = self.sanitize_name(sheet_name)
@@ -71,7 +71,7 @@ class Mapping():
 
     def update_map(self, new_map):
         # Load existing fields map from the file
-        with open('models/db/fields_map.json', 'r') as f:
+        with open('db/fields_map.json', 'r') as f:
             fields_map = json.load(f)
 
         # Iterate through the incoming data
@@ -82,7 +82,7 @@ class Mapping():
             fields_map[publisher] = fields
 
         # Save the updated fields map back to the file
-        with open('models/db/fields_map.json', 'w') as f:
+        with open('db/fields_map.json', 'w') as f:
             json.dump(fields_map, f, indent=2)
 
     def define_map_for_unknown_columns(self, column_name, target_names):
