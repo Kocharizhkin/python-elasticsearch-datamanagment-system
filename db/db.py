@@ -22,3 +22,4 @@ class Database:
         self.update.driver = self.driver
         self.search.driver = self.driver
         self.mapping.driver = self.driver
+        self.search.book_storage = self.books

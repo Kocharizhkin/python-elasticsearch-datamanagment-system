@@ -64,11 +64,19 @@ class BooksStorage():
     async def get_supplier_info(self, book_id): 
         id_columns = await self.get_id_columns()
         supplier_info_list = []
-        book_table = Table(Book.__tablename__, MetaData(), autoload_with=self.driver.async_engine)
-
+        
         try:
             async with self.driver.session_scope_async() as session:
-                # Reflect the book table asynchronously
+                # Obtain an async connection by awaiting the connection coroutine
+                conn = await session.connection()
+
+                # Define a function to reflect the table synchronously
+                def reflect_table(connection, table_name):
+                    metadata = MetaData()
+                    return Table(table_name, metadata, autoload_with=connection)
+
+                # Reflect the book table using run_sync with the connection
+                book_table = await conn.run_sync(reflect_table, Book.__tablename__)
                 stmt = select(book_table).where(book_table.c.id == book_id)
                 result = await session.execute(stmt)
                 book_entry = result.fetchone()
@@ -83,8 +91,8 @@ class BooksStorage():
                     if supplier_table_ids is not None and isinstance(supplier_table_ids, list):
                         table_name = col[:-3]  # Get the supplier table name
 
-                        # Dynamically reflect the supplier table
-                        supplier_table = Table(table_name, MetaData(), autoload_with=self.driver.async_engine)
+                        # Reflect the supplier table using run_sync with the connection
+                        supplier_table = await conn.run_sync(reflect_table, table_name)
 
                         # Query the supplier table for each supplier ID in the list
                         for supplier_table_id in supplier_table_ids:

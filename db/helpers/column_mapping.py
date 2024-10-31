@@ -1,21 +1,30 @@
 import json
 import pandas as pd
+import numpy as np
 import re
 from db.helpers.cosine_similarity import Book_similarity
 
 similairity = Book_similarity()
 
 class Mapping():
-
-    async def extract_column_names(self, filename):
-        column_names_dict = {}
+    
+    async def extract_data_preview(self, filename):
+        data_info = {}
         df = pd.read_excel(f'db/upload/{filename}', engine='openpyxl', sheet_name=None)
         
         for sheet_name, sheet_df in df.items():
-            column_names_dict[sheet_name] = list(sheet_df.columns)
+            data_info[sheet_name] = {}
+            # Store column names
+            data_info[sheet_name]["column_names"] = list(sheet_df.columns)
             
-        return column_names_dict
-    
+            # Replace all null-like values (NaN, None) with None explicitly
+            sheet_df = sheet_df.applymap(lambda x: None if pd.isna(x) else x)
+            
+            # Store first 3 rows of data
+            data_info[sheet_name]["data_preview"] = sheet_df.head(3).to_dict(orient='records')
+        
+        return data_info
+
     def sanitize_name(self, name):
         if name[0].isdigit():
             name = 'supplier_' + name

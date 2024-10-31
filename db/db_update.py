@@ -82,8 +82,6 @@ class DatabaseUpdater:
             self.update = await self.updates_storage.create(session, total_rows=total_rows)
 
         for sheet_name, sheet_df in df.items():
-            with open("./update_errors.txt", "a") as f:
-                f.write(f"\n\n\nnext sheet\n\n\n")
             supplier_table = supplier_tables.get(self.sanitize_name(sheet_name.lower()))
             if supplier_table is not None:
                 processed_rows = await self.process_sheet(session, self.update.id, sheet_df, supplier_table, sheet_name, total_rows, processed_rows)
@@ -92,7 +90,7 @@ class DatabaseUpdater:
         time_total = timedelta(seconds=(time_end - time_start))
 
         async with self.driver.session_scope_async() as session:
-            self.updates_storage.update(session, self.update, {'time_total': time_total})
+            await self.updates_storage.update(session, self.update, {'time_total': time_total})
 
         return time_total
     
@@ -110,6 +108,7 @@ class DatabaseUpdater:
             mapped_row = self.prepare_mapped_row(input_book_row)
 
             if matched_id:
+                print(input_book_row, matched_id)
                 await self.books_storage.update_existing_books(session, mapped_row, matched_id, supplier_table, supplier_column) 
             else:
                 new_book = await self.books_storage.insert_new_books(session, mapped_row, supplier_table, supplier_column)
@@ -169,7 +168,10 @@ class DatabaseUpdater:
                 except (TypeError, ValueError):
                     mapped_row[key] = None
             elif key == 'publication_year' or key == 'page_count':
-                mapped_row[key] = str(value) if value is not None else None
+                value = str(value) if value is not None else None
+                if value and value.endswith(".0"):
+                    value = value[:-2]  # Remove the last two characters (".0")
+                mapped_row[key] = value
             elif key in ['weight', 'supplier_price', 'display_price']:
                 try:
                     mapped_row[key] = float(value)
@@ -183,14 +185,6 @@ class DatabaseUpdater:
 
 
     async def run(self, filename):
-        with open("./update_progress.txt", "w") as f:
-            f.write(" ")
-        with open("./update_errors.txt", "w") as f:
-            f.write(" ")
-        with open('./update_search_results.txt', 'w') as f:
-            f.write(" ")
-        with open('./update_unmatched.txt', 'a') as f:
-            f.write(" ")
         self.db_schema.prepare_structure()
         df, supplier_tables = await self.preprocess_excel(filename)
         time_total = await self.update_db(df, supplier_tables)

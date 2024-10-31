@@ -7,15 +7,12 @@ from datetime import datetime
 import pandas as pd
 import traceback
 
-from db.storage.books import Book
-
 class Search():
 
     def __init__(self):
         # Elasticsearch client setup
         elastic_url = os.getenv("ELASTICSEARCH_URL")
         self.es_client = AsyncElasticsearch(elastic_url)
-        self.book = Book()
 
         # SQLAlchemy engine and session setup
         database_url = os.getenv('SYNC_DATABASE_URL')
@@ -27,8 +24,8 @@ class Search():
         session = self.Session()
         return session
 
-    def get_prices(self, book_id):
-        suppliers_info = self.book.get_supplier_info(book_id)
+    async def get_prices(self, book_id):
+        suppliers_info = await self.book_storage.get_supplier_info(book_id)
         prices = ''
         for entry in suppliers_info:
             if entry:
@@ -39,6 +36,14 @@ class Search():
                     prices += f"{supplier_name.replace('_', ' ')}: €{supplier_price} "     
 
         return prices
+    
+    async def web_search(self, search_params, single_term: bool):
+        results = await self.search_by_es(search_params, single_term)
+        if results:
+            for result in results:
+                result['suppliers'] = await self.get_prices(result['id'])
+            return results
+        return False
 
     async def search_by_es(self, search_params, single_term: bool):
         try:
@@ -85,16 +90,12 @@ class Search():
         if 'publisher' in input_book_row.keys():
             search_params['publisher'] = input_book_row['publisher']
 
-        search_results = await self.search_by_es(search_params)
+        search_results = await self.search_by_es(search_params, single_term=False)
 
         if search_results:
-            with open('./update_progress.txt', 'a') as f:
-                f.write(f'input row: {search_params}\nsearch_result:\n{search_results}\n\n\n')
-            return search_results['id']
+            return search_results[0]['id']
         
         else:
-            with open('./update_unmatched.txt', 'a') as f:
-                f.write(f'input row: {input_book_row}\nsearch_params:\n{search_params}\n\n\n')
             return False
         
 
@@ -138,14 +139,11 @@ class Search():
 
 
     async def call_search_for_row(self, row):
-        print(f'call serch for row {row}')
         # Replace commas with underscores in the values of the dictionary
         search_terms = {key: str(value).replace(',', '_') for key, value in row.items()}
         search_terms = {key: value for key, value in search_terms.items() if value != '<NA>'}
 
-        print(f'serch terms {search_terms}')
-
-        results = await self.search_by_es(search_params=search_terms)
+        results = await self.search_by_es(search_params=search_terms, single_term=False)
 
         df = pd.DataFrame(results)
 

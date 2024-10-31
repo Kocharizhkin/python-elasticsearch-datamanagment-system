@@ -1,5 +1,6 @@
 from quart import Blueprint, jsonify, request
 import json
+import traceback
 
 def create_update_blueprint(db):
     # Create a blueprint for books
@@ -31,16 +32,19 @@ def create_update_blueprint(db):
             await file.save(f'db/upload/{file.filename}')
 
             # Accessing the sheet_column_mapping directly from the received JSON data
-            sheet_column_mapping = await db.mapping.extract_column_names(file.filename)
+            data_preview = await db.mapping.extract_data_preview(file.filename)
+
+            print(data_preview)
 
             mapped_columns = {}
 
-            for sheet_name, column_names in sheet_column_mapping.items():
+            for sheet_name in data_preview:
+                mapped_columns[sheet_name] = {}
                 print(sheet_name)
-                sheet_map = db.mapping.columns_mapping(sheet_name, column_names)
+                sheet_map = db.mapping.columns_mapping(sheet_name, data_preview[sheet_name]["column_names"])
                 print(sheet_map)
-                mapped_columns.update(sheet_map)
-                mapped_columns[sheet_name]['all_columns'] = sheet_column_mapping[sheet_name]
+                mapped_columns[sheet_name]['map'] = sheet_map[sheet_name]
+                mapped_columns[sheet_name]['data_preview'] = data_preview[sheet_name]["data_preview"]
 
             return jsonify(mapped_columns)
 
@@ -70,7 +74,8 @@ def create_update_blueprint(db):
             await db.update.run(filename)
         except Exception as e:
             error_message = f"Error: {str(e)}\nTraceback: {e}\n"
-            print(e)
+            print(error_message)
+            traceback.print_exc()
         
         # Return the response immediately
         return jsonify({"message": "Update started successfully!"}), 200

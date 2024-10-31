@@ -49,15 +49,12 @@ def create_search_blueprint(db):
             # If _switch is false, get the search term directly
             search_term = request.args.get('searchTerm', default=None, type=str)
             search_term = search_term.strip()
-            print(search_term)
 
             # Check if saveToFile is present in the request
             save_to_file = request.args.get('saveToFile', default='false', type=str).lower() == 'true'
 
-            print(f"Save to File: {save_to_file}")
-
             # Perform the search
-            results = await db.search.search_by_es(search_params = search_term, single_term  = True)
+            results = await db.search.web_search(search_params = search_term, single_term = True)
 
             if save_to_file:
                 # Create a Pandas DataFrame from results
@@ -85,7 +82,7 @@ def create_search_blueprint(db):
             file_extension = uploaded_file.filename.rsplit('.', 1)[-1].lower()
 
             if file_extension == 'xlsx':
-                excel_filename = db.search.bulk_search(BytesIO(file_content))
+                excel_filename = await db.search.bulk_search(BytesIO(file_content))
                 # For Excel files, use pd.read_excel
             else:
                 return jsonify({'error': 'Unsupported file format'}), 400
